@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>จดๆ — Todo & Money</title>
+  <meta name="description" content="Todo list และบันทึกรายรับรายจ่ายแบบง่ายๆ ใช้ออฟไลน์ได้">
+  <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="จดๆ">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar"><h1 id="title">สิ่งที่ต้องทำ</h1></header>
+
+    <main>
+      <!-- ===== TODO ===== -->
+      <section id="view-todo" class="view">
+        <form id="todo-form" class="card todo-form" autocomplete="off">
+          <input id="todo-title" type="text" placeholder="เพิ่มงานใหม่…" maxlength="200" required enterkeyhint="done" aria-label="ชื่องาน">
+          <div class="todo-form-row">
+            <label class="date-field"><span>กำหนด</span><input id="todo-due" type="date" aria-label="วันที่กำหนด"></label>
+            <button class="btn primary" type="submit">เพิ่ม</button>
+          </div>
+        </form>
+
+        <div class="seg" id="todo-filter" role="group" aria-label="กรองงาน">
+          <button type="button" data-filter="all" class="on">ทั้งหมด</button>
+          <button type="button" data-filter="active">ค้างอยู่</button>
+          <button type="button" data-filter="done">เสร็จแล้ว</button>
+        </div>
+
+        <div id="todo-stats" class="muted small"></div>
+        <ul id="todo-list" class="list"></ul>
+        <p id="todo-empty" class="empty" hidden></p>
+        <button id="todo-clear" class="link-btn" type="button" hidden>ล้างงานที่เสร็จแล้ว</button>
+      </section>
+
+      <!-- ===== MONEY ===== -->
+      <section id="view-money" class="view" hidden>
+        <div class="month-nav">
+          <button id="m-prev" class="icon-btn" type="button" aria-label="เดือนก่อนหน้า">‹</button>
+          <button id="m-label" class="month-label" type="button" title="กลับไปเดือนนี้"></button>
+          <button id="m-next" class="icon-btn" type="button" aria-label="เดือนถัดไป">›</button>
+        </div>
+
+        <div class="summary">
+          <div class="stat"><span>รายรับ</span><b id="s-income" class="pos">฿0</b></div>
+          <div class="stat"><span>รายจ่าย</span><b id="s-expense" class="neg">฿0</b></div>
+          <div class="stat"><span>คงเหลือ</span><b id="s-balance">฿0</b></div>
+        </div>
+
+        <div id="breakdown" class="card" hidden></div>
+        <div id="tx-list"></div>
+        <p id="tx-empty" class="empty" hidden>ยังไม่มีรายการในเดือนนี้<br>กดปุ่ม + เพื่อเพิ่ม</p>
+      </section>
+
+      <!-- ===== MORE ===== -->
+      <section id="view-more" class="view" hidden>
+        <div class="card info">
+          <h2>ข้อมูลของคุณ</h2>
+          <p class="muted small">ข้อมูลทั้งหมดเก็บอยู่ในเครื่อง/เบราว์เซอร์นี้เท่านั้น ไม่ถูกส่งไปที่ไหน — แนะนำให้ส่งออกสำรองเป็นระยะ และถ้าเปลี่ยนเครื่องให้นำเข้าไฟล์สำรอง</p>
+          <div id="data-count" class="muted small"></div>
+        </div>
+
+        <div class="card menu">
+          <button class="menu-item" id="btn-export-json" type="button"><span>⬇️ ส่งออกข้อมูลสำรอง (JSON)</span></button>
+          <button class="menu-item" id="btn-export-csv" type="button"><span>📄 ส่งออกรายรับรายจ่าย (CSV)</span></button>
+          <label class="menu-item" for="file-import"><span>⬆️ นำเข้าไฟล์สำรอง (JSON)</span></label>
+          <input id="file-import" type="file" accept="application/json,.json" hidden>
+          <button class="menu-item danger" id="btn-wipe" type="button"><span>🗑️ ลบข้อมูลทั้งหมด</span></button>
+        </div>
+
+        <div class="card info">
+          <h2>ติดตั้งเป็นแอป</h2>
+          <p class="small"><b>iPhone/iPad:</b> เปิดใน Safari → ปุ่มแชร์ → <i>เพิ่มไปยังหน้าจอโฮม</i></p>
+          <p class="small"><b>macOS Safari:</b> เมนู ไฟล์ → <i>เพิ่มไปยัง Dock…</i></p>
+          <p class="small"><b>macOS Chrome/Edge:</b> ไอคอนติดตั้งที่แถบที่อยู่ → <i>Install</i></p>
+        </div>
+        <p class="muted small center">จดๆ v1.0</p>
+      </section>
+    </main>
+  </div>
+
+  <button id="fab" class="fab" type="button" aria-label="เพิ่มรายการ" hidden>+</button>
+
+  <nav class="tabbar" aria-label="เมนูหลัก">
+    <div class="tabbar-inner">
+      <button type="button" data-tab="todo" class="on" aria-current="page"><i>✅</i><span>งาน</span></button>
+      <button type="button" data-tab="money"><i>💰</i><span>เงิน</span></button>
+      <button type="button" data-tab="more"><i>⚙️</i><span>เพิ่มเติม</span></button>
+    </div>
+  </nav>
+
+  <!-- Transaction dialog -->
+  <dialog id="tx-dialog">
+    <form id="tx-form" autocomplete="off">
+      <h2 id="tx-dialog-title">เพิ่มรายการ</h2>
+      <div class="seg" id="tx-type" role="group" aria-label="ประเภท">
+        <button type="button" data-type="expense" class="on">รายจ่าย</button>
+        <button type="button" data-type="income">รายรับ</button>
+      </div>
+      <label class="field">จำนวนเงิน (บาท)
+        <input id="tx-amount" type="text" inputmode="decimal" placeholder="0.00" required>
+      </label>
+      <div class="field">หมวดหมู่
+        <div id="tx-cats" class="chips"></div>
+      </div>
+      <label class="field">วันที่
+        <input id="tx-date" type="date" required>
+      </label>
+      <label class="field">โน้ต (ไม่บังคับ)
+        <input id="tx-note" type="text" maxlength="120" placeholder="เช่น ข้าวเที่ยง">
+      </label>
+      <div class="dlg-actions">
+        <button type="button" id="tx-delete" class="btn danger" hidden>ลบ</button>
+        <span class="spacer"></span>
+        <button type="button" id="tx-cancel" class="btn">ยกเลิก</button>
+        <button type="submit" class="btn primary">บันทึก</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Todo edit dialog -->
+  <dialog id="todo-dialog">
+    <form id="todo-edit-form" autocomplete="off">
+      <h2>แก้ไขงาน</h2>
+      <label class="field">ชื่องาน
+        <input id="te-title" type="text" maxlength="200" required>
+      </label>
+      <label class="field">กำหนด (ไม่บังคับ)
+        <input id="te-due" type="date">
+      </label>
+      <div class="dlg-actions">
+        <button type="button" id="te-delete" class="btn danger">ลบ</button>
+        <span class="spacer"></span>
+        <button type="button" id="te-cancel" class="btn">ยกเลิก</button>
+        <button type="submit" class="btn primary">บันทึก</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

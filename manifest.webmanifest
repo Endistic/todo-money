@@ -1,0 +1,19 @@
+{
+  "name": "จดๆ — Todo & Money",
+  "short_name": "จดๆ",
+  "description": "Todo list และบันทึกรายรับรายจ่ายแบบง่ายๆ ใช้ออฟไลน์ได้",
+  "lang": "th",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f2f7",
+  "theme_color": "#0a7aff",
+  "categories": ["productivity", "finance"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
