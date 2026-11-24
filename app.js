@@ -148,8 +148,10 @@ $('#todo-form').addEventListener('submit', (e) => {
   const title = $('#todo-title').value.trim();
   if (!title) return;
   const due = $('#todo-due').value;
-  state.todos.push({ id: uid(), title, due: DATE_RE.test(due) ? due : '', done: false, createdAt: Date.now(), doneAt: 0 });
+  const detail = $('#todo-detail').value.trim();
+  state.todos.push({ id: uid(), title, detail, due: DATE_RE.test(due) ? due : '', done: false, createdAt: Date.now(), doneAt: 0 });
   $('#todo-title').value = '';
+  $('#todo-detail').value = '';
   $('#todo-due').value = '';
   commit();
   $('#todo-title').focus();
@@ -213,7 +215,9 @@ function renderTodos() {
           onclick: () => { t.done = !t.done; t.doneAt = t.done ? Date.now() : 0; commit(); },
         }),
         h('button', { class: 'todo-body', type: 'button', onclick: () => openTodoDialog(t) },
-          h('span', { class: 'todo-title' }, t.title), dueBadge(t))
+          h('span', { class: 'todo-title' }, t.title),
+          t.detail ? h('span', { class: 'todo-detail' }, t.detail.split('\n', 1)[0]) : null,
+          dueBadge(t))
       )
     )
   );
@@ -238,6 +242,7 @@ function openTodoDialog(t) {
   editingTodo = t;
   $('#te-title').value = t.title;
   $('#te-due').value = t.due || '';
+  $('#te-detail').value = t.detail || '';
   todoDlg.showModal();
 }
 $('#todo-edit-form').addEventListener('submit', (e) => {
@@ -245,6 +250,7 @@ $('#todo-edit-form').addEventListener('submit', (e) => {
   const title = $('#te-title').value.trim();
   if (!title || !editingTodo) return;
   editingTodo.title = title;
+  editingTodo.detail = $('#te-detail').value.trim();
   const due = $('#te-due').value;
   editingTodo.due = DATE_RE.test(due) ? due : '';
   todoDlg.close();
@@ -463,7 +469,7 @@ $('#file-import').addEventListener('change', async (e) => {
     const todos = data.todos
       .filter((t) => t && typeof t.title === 'string' && t.title.trim())
       .map((t) => ({
-        id: str(t.id, 64) || uid(), title: str(t.title, 200), due: DATE_RE.test(t.due) ? t.due : '',
+        id: str(t.id, 64) || uid(), title: str(t.title, 200), detail: str(t.detail, 5000).trim(), due: DATE_RE.test(t.due) ? t.due : '',
         done: !!t.done, createdAt: Number(t.createdAt) || Date.now(), doneAt: Number(t.doneAt) || 0,
       }));
     const tx = data.tx

@@ -25,6 +25,7 @@
       <section id="view-todo" class="view">
         <form id="todo-form" class="card todo-form" autocomplete="off">
           <input id="todo-title" type="text" placeholder="เพิ่มงานใหม่…" maxlength="200" required enterkeyhint="done" aria-label="ชื่องาน">
+          <textarea id="todo-detail" rows="2" maxlength="5000" placeholder="รายละเอียด (ไม่บังคับ)" aria-label="รายละเอียด"></textarea>
           <div class="todo-form-row">
             <label class="date-field"><span>กำหนด</span><input id="todo-due" type="date" aria-label="วันที่กำหนด"></label>
             <button class="btn primary" type="submit">เพิ่ม</button>
@@ -137,6 +138,9 @@
       </label>
       <label class="field">กำหนด (ไม่บังคับ)
         <input id="te-due" type="date">
+      </label>
+      <label class="field">รายละเอียด (ไม่บังคับ)
+        <textarea id="te-detail" rows="5" maxlength="5000"></textarea>
       </label>
       <div class="dlg-actions">
         <button type="button" id="te-delete" class="btn danger">ลบ</button>
