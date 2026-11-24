@@ -135,10 +135,43 @@ function hideToast() {
 const TITLES = { todo: 'สิ่งที่ต้องทำ', money: 'รายรับรายจ่าย', more: 'เพิ่มเติม' };
 function setTab(tab) {
   ui.tab = tab;
+  $$('.strip').forEach((s) => delete s.dataset.ym); // re-center the day strip on today
   render();
   window.scrollTo(0, 0);
 }
 $$('.tabbar button').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
+
+/* ---------- month nav + day strip (ใช้ร่วมกันทั้งแท็บงานและเงิน) ---------- */
+$$('[data-shift]').forEach((b) =>
+  b.addEventListener('click', () => { ui.month = shiftMonth(ui.month, Number(b.dataset.shift)); render(); })
+);
+$$('.month-label').forEach((b) => b.addEventListener('click', () => { ui.month = today().slice(0, 7); render(); }));
+
+// marks: Map<'YYYY-MM-DD', ''|'pos'|'neg'> = วันที่มีรายการ ; กดแล้วเลื่อนไปที่ #<prefix><date>
+function renderStrip(strip, marks, prefix) {
+  const [y, m] = ui.month.split('-').map(Number);
+  const now = today();
+  const keep = strip.dataset.ym === ui.month ? strip.scrollLeft : null;
+  strip.replaceChildren(
+    ...Array.from({ length: new Date(y, m, 0).getDate() }, (_, i) => {
+      const date = `${ui.month}-${pad(i + 1)}`;
+      const has = marks.has(date);
+      return h('button', {
+        type: 'button', class: date === now ? 'today' : null, disabled: !has,
+        onclick: () => document.getElementById(prefix + date)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      },
+      h('small', {}, parseYMD(date).toLocaleDateString('th-TH', { weekday: 'narrow' })),
+      h('b', {}, i + 1),
+      h('i', { class: has ? 'dot on ' + marks.get(date) : 'dot' }));
+    })
+  );
+  if (keep != null) strip.scrollLeft = keep;
+  else {
+    const t = strip.querySelector('.today');
+    strip.scrollLeft = t ? t.offsetLeft - (strip.clientWidth - t.offsetWidth) / 2 : 0;
+  }
+  strip.dataset.ym = ui.month;
+}
 
 /* =========================================================
    TODO
@@ -150,6 +183,7 @@ $('#todo-form').addEventListener('submit', (e) => {
   const due = $('#todo-due').value;
   const detail = $('#todo-detail').value.trim();
   state.todos.push({ id: uid(), title, detail, due: DATE_RE.test(due) ? due : '', done: false, createdAt: Date.now(), doneAt: 0 });
+  if (DATE_RE.test(due)) ui.month = due.slice(0, 7); // พาไปเดือนของงานที่เพิ่งเพิ่ม
   $('#todo-title').value = '';
   $('#todo-detail').value = '';
   $('#todo-due').value = '';
@@ -205,33 +239,44 @@ function renderTodos() {
   $('#todo-stats').textContent = state.todos.length ? `ค้างอยู่ ${left} · เสร็จแล้ว ${doneCount}` : '';
   $$('#todo-filter button').forEach((b) => b.classList.toggle('on', b.dataset.filter === ui.filter));
 
-  const list = $('#todo-list');
-  list.replaceChildren(
-    ...items.map((t) =>
-      h('li', { class: 'todo' + (t.done ? ' done' : '') },
-        h('button', {
-          class: 'check', type: 'button', role: 'checkbox', 'aria-checked': String(t.done),
-          'aria-label': t.done ? 'ยกเลิกเสร็จ' : 'ทำเสร็จแล้ว',
-          onclick: () => { t.done = !t.done; t.doneAt = t.done ? Date.now() : 0; commit(); },
-        }),
-        h('button', { class: 'todo-body', type: 'button', onclick: () => openTodoDialog(t) },
-          h('span', { class: 'todo-title' }, t.title),
-          t.detail ? h('span', { class: 'todo-detail' }, t.detail.split('\n', 1)[0]) : null,
-          dueBadge(t))
-      )
+  // timeline: [เลยกำหนดจากเดือนก่อน] → [ไม่มีกำหนด] → วันในเดือนนี้ (เก่า → ใหม่)
+  const now = today();
+  const groups = new Map();
+  if (now.startsWith(ui.month)) groups.set('overdue', items.filter((t) => !t.done && t.due && t.due < ui.month + '-01'));
+  groups.set('nodue', items.filter((t) => !t.due));
+  const dates = [...new Set(items.filter((t) => t.due.startsWith(ui.month)).map((t) => t.due))].sort();
+  for (const d of dates) groups.set(d, items.filter((t) => t.due === d));
+
+  const HEAD = { overdue: '⚠️ เลยกำหนดจากเดือนก่อน', nodue: 'ไม่มีกำหนด' };
+  const row = (t, showDue) =>
+    h('li', { class: 'todo' + (t.done ? ' done' : t.due && t.due < now ? ' late' : '') },
+      h('button', {
+        class: 'check', type: 'button', role: 'checkbox', 'aria-checked': String(t.done),
+        'aria-label': t.done ? 'ยกเลิกเสร็จ' : 'ทำเสร็จแล้ว',
+        onclick: () => { t.done = !t.done; t.doneAt = t.done ? Date.now() : 0; commit(); },
+      }),
+      h('button', { class: 'todo-body', type: 'button', onclick: () => openTodoDialog(t) },
+        h('span', { class: 'todo-title' }, t.title),
+        t.detail ? h('span', { class: 'todo-detail' }, t.detail.split('\n', 1)[0]) : null,
+        showDue ? dueBadge(t) : null)
+    );
+  $('#todo-list').replaceChildren(
+    ...[...groups].filter(([, g]) => g.length).map(([k, g]) =>
+      h('section', { class: 'tl-day', id: 'td-' + k },
+        h('div', { class: 'day-head' }, h('span', {}, HEAD[k] || dayLabel(k)), h('span', {}, `${g.length} งาน`)),
+        h('ul', { class: 'tl' }, g.map((t) => row(t, k === 'overdue'))))
     )
   );
+  renderStrip($('#todo-strip'),
+    new Map(dates.map((d) => [d, groups.get(d).some((t) => !t.done && d < now) ? 'neg' : ''])), 'td-');
 
   const empty = $('#todo-empty');
-  empty.hidden = items.length > 0;
-  if (!items.length) {
-    empty.innerHTML = '';
-    empty.append(
-      ui.filter === 'done' ? 'ยังไม่มีงานที่เสร็จ'
-      : ui.filter === 'active' && state.todos.length ? '🎉 ไม่มีงานค้างแล้ว'
-      : 'ยังไม่มีงาน — เพิ่มงานแรกได้เลยด้านบน'
-    );
-  }
+  empty.hidden = $('#todo-list').children.length > 0;
+  empty.textContent =
+    !state.todos.length ? 'ยังไม่มีงาน — เพิ่มงานแรกได้เลยด้านบน'
+    : ui.filter === 'done' ? 'ไม่มีงานที่เสร็จในเดือนนี้'
+    : ui.filter === 'active' ? '🎉 ไม่มีงานค้างในเดือนนี้'
+    : 'ไม่มีงานในเดือนนี้';
   $('#todo-clear').hidden = !(doneCount > 0 && ui.filter !== 'active');
 }
 
@@ -253,6 +298,7 @@ $('#todo-edit-form').addEventListener('submit', (e) => {
   editingTodo.detail = $('#te-detail').value.trim();
   const due = $('#te-due').value;
   editingTodo.due = DATE_RE.test(due) ? due : '';
+  if (editingTodo.due) ui.month = editingTodo.due.slice(0, 7);
   todoDlg.close();
   commit();
 });
@@ -269,12 +315,7 @@ $('#te-delete').addEventListener('click', () => {
 /* =========================================================
    MONEY
    ========================================================= */
-$('#m-prev').addEventListener('click', () => { ui.month = shiftMonth(ui.month, -1); render(); });
-$('#m-next').addEventListener('click', () => { ui.month = shiftMonth(ui.month, 1); render(); });
-$('#m-label').addEventListener('click', () => { ui.month = today().slice(0, 7); render(); });
-
 function renderMoney() {
-  $('#m-label').textContent = monthLabel(ui.month);
   const txs = state.tx.filter((t) => t.date.startsWith(ui.month));
 
   let inc = 0, exp = 0;
@@ -310,21 +351,23 @@ function renderMoney() {
     );
   }
 
-  // grouped list
+  // timeline รายวัน (เก่า → ใหม่)
   const groups = new Map();
-  for (const t of txs.sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt)) {
+  for (const t of txs.sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt)) {
     if (!groups.has(t.date)) groups.set(t.date, []);
     groups.get(t.date).push(t);
   }
+  const nets = new Map([...groups].map(([d, items]) =>
+    [d, items.reduce((s, t) => s + (t.type === 'income' ? 1 : -1) * cents(t.amount), 0) / 100]));
+  renderStrip($('#money-strip'), new Map([...nets].map(([d, n]) => [d, n < 0 ? 'neg' : 'pos'])), 'md-');
   $('#tx-list').replaceChildren(
     ...[...groups.entries()].map(([date, items]) => {
-      const net = items.reduce((s, t) => s + (t.type === 'income' ? 1 : -1) * cents(t.amount), 0) / 100;
-      return h('div', { class: 'day' },
-        h('div', { class: 'day-head' }, h('span', {}, dayLabel(date)), h('span', {}, baht(net))),
-        h('div', { class: 'day-list' },
+      return h('section', { class: 'tl-day', id: 'md-' + date },
+        h('div', { class: 'day-head' }, h('span', {}, dayLabel(date)), h('span', {}, baht(nets.get(date)))),
+        h('div', { class: 'tl' },
           items.map((t) => {
             const cat = findCat(t.type, t.category);
-            return h('button', { class: 'tx', type: 'button', onclick: () => openTxDialog(t) },
+            return h('button', { class: 'tx ' + t.type, type: 'button', onclick: () => openTxDialog(t) },
               h('span', { class: 'tx-ico' }, cat.icon),
               h('span', { class: 'tx-main' }, h('b', {}, cat.name), t.note ? h('small', {}, t.note) : null),
               h('span', { class: 'tx-amt ' + (t.type === 'income' ? 'pos' : 'neg') },
@@ -501,6 +544,7 @@ $('#btn-wipe').addEventListener('click', () => {
    ========================================================= */
 function render() {
   $('#title').textContent = TITLES[ui.tab];
+  $$('.month-label').forEach((b) => (b.textContent = monthLabel(ui.month)));
   for (const t of ['todo', 'money', 'more']) $('#view-' + t).hidden = ui.tab !== t;
   $$('.tabbar button').forEach((b) => {
     const on = b.dataset.tab === ui.tab;

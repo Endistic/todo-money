@@ -1,7 +1,7 @@
 'use strict';
 
 // เปลี่ยนเลขเวอร์ชันนี้ทุกครั้งที่ deploy ของใหม่ เพื่อให้เครื่องผู้ใช้อัปเดตแคช
-const CACHE = 'todo-money-v2';
+const CACHE = 'todo-money-v3';
 const ASSETS = [
   './',
   'index.html',

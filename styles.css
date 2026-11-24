@@ -101,10 +101,8 @@ input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px
 .date-field { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 14px; color: var(--muted); }
 .date-field input { flex: 1; min-width: 0; }
 
-.list { list-style: none; margin: 8px 0 0; padding: 0; background: var(--card); border-radius: var(--radius); overflow: hidden; }
-.list:empty { display: none; }
-.todo { display: flex; align-items: center; gap: 4px; padding: 4px 4px 4px 8px; border-bottom: 1px solid var(--line); }
-.todo:last-child { border-bottom: 0; }
+#todo-list { margin-top: 8px; }
+.todo { display: flex; align-items: center; gap: 4px; padding: 4px 4px 4px 8px; }
 .check {
   flex: none; width: 44px; height: 44px; border: 0; background: transparent; position: relative;
 }
@@ -143,16 +141,42 @@ input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px
 .bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
 
-.day { margin-bottom: 14px; }
 .day-head { display: flex; justify-content: space-between; padding: 0 6px 6px; font-size: 13px; color: var(--muted); }
-.tx { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--line); background: var(--card); text-align: left; }
-.tx:last-child { border-bottom: 0; }
-.day-list { border-radius: var(--radius); overflow: hidden; }
+.tx { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border: 0; text-align: left; }
 .tx-ico { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--fill); display: grid; place-items: center; font-size: 18px; }
 .tx-main { flex: 1; min-width: 0; }
 .tx-main b { display: block; font-weight: 600; }
 .tx-main small { display: block; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tx-amt { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------- day strip + timeline (todo & money) ---------- */
+.strip {
+  position: relative; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none;
+  margin: 0 -16px 14px; padding: 0 16px; scroll-padding: 0 16px;
+}
+.strip::-webkit-scrollbar { display: none; }
+.strip button { flex: none; width: 44px; display: grid; justify-items: center; gap: 2px; padding: 6px 0; border: 0; border-radius: 12px; background: var(--card); }
+.strip button:disabled { opacity: .45; cursor: default; }
+.strip button.today { opacity: 1; }
+.strip small { font-size: 11px; color: var(--muted); }
+.strip b { width: 30px; height: 30px; line-height: 30px; text-align: center; border-radius: 50%; font-variant-numeric: tabular-nums; }
+.strip .today b { background: var(--accent); color: var(--on-accent); }
+.strip .dot { width: 5px; height: 5px; border-radius: 50%; }
+.strip .dot.on { background: var(--accent); }
+.strip .dot.pos { background: var(--pos); }
+.strip .dot.neg { background: var(--neg); }
+
+.tl-day { margin-bottom: 14px; scroll-margin-top: 12px; }
+.tl { list-style: none; margin: 0 0 0 7px; padding: 0 0 0 16px; border-left: 2px solid var(--line); }
+.tl > * { position: relative; background: var(--card); border-radius: 12px; margin-bottom: 6px; }
+.tl > :last-child { margin-bottom: 0; }
+.tl > *::before { /* จุดบนเส้น timeline */
+  content: ''; position: absolute; left: -22px; top: 50%; width: 10px; height: 10px; margin-top: -5px;
+  border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--bg);
+}
+.tl > .done::before { background: var(--muted); }
+.tl > .late::before, .tl > .expense::before { background: var(--neg); }
+.tl > .income::before { background: var(--pos); }
 
 .fab {
   position: fixed; right: max(20px, calc(50% - 320px + 16px));

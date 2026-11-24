@@ -32,6 +32,13 @@
           </div>
         </form>
 
+        <div class="month-nav">
+          <button class="icon-btn" type="button" data-shift="-1" aria-label="เดือนก่อนหน้า">‹</button>
+          <button class="month-label" type="button" title="กลับไปเดือนนี้"></button>
+          <button class="icon-btn" type="button" data-shift="1" aria-label="เดือนถัดไป">›</button>
+        </div>
+        <div id="todo-strip" class="strip" role="group" aria-label="ไปยังวัน"></div>
+
         <div class="seg" id="todo-filter" role="group" aria-label="กรองงาน">
           <button type="button" data-filter="all" class="on">ทั้งหมด</button>
           <button type="button" data-filter="active">ค้างอยู่</button>
@@ -39,7 +46,7 @@
         </div>
 
         <div id="todo-stats" class="muted small"></div>
-        <ul id="todo-list" class="list"></ul>
+        <div id="todo-list"></div>
         <p id="todo-empty" class="empty" hidden></p>
         <button id="todo-clear" class="link-btn" type="button" hidden>ล้างงานที่เสร็จแล้ว</button>
       </section>
@@ -47,10 +54,11 @@
       <!-- ===== MONEY ===== -->
       <section id="view-money" class="view" hidden>
         <div class="month-nav">
-          <button id="m-prev" class="icon-btn" type="button" aria-label="เดือนก่อนหน้า">‹</button>
-          <button id="m-label" class="month-label" type="button" title="กลับไปเดือนนี้"></button>
-          <button id="m-next" class="icon-btn" type="button" aria-label="เดือนถัดไป">›</button>
+          <button class="icon-btn" type="button" data-shift="-1" aria-label="เดือนก่อนหน้า">‹</button>
+          <button class="month-label" type="button" title="กลับไปเดือนนี้"></button>
+          <button class="icon-btn" type="button" data-shift="1" aria-label="เดือนถัดไป">›</button>
         </div>
+        <div id="money-strip" class="strip" role="group" aria-label="ไปยังวัน"></div>
 
         <div class="summary">
           <div class="stat"><span>รายรับ</span><b id="s-income" class="pos">฿0</b></div>
