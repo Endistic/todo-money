@@ -75,8 +75,30 @@
       <section id="view-more" class="view" hidden>
         <div class="card info">
           <h2>ข้อมูลของคุณ</h2>
-          <p class="muted small">ข้อมูลทั้งหมดเก็บอยู่ในเครื่อง/เบราว์เซอร์นี้เท่านั้น ไม่ถูกส่งไปที่ไหน — แนะนำให้ส่งออกสำรองเป็นระยะ และถ้าเปลี่ยนเครื่องให้นำเข้าไฟล์สำรอง</p>
+          <p class="muted small">ข้อมูลเก็บอยู่ในเครื่อง/เบราว์เซอร์นี้ — ถ้าเปิด sync จะส่งขึ้น server แบบเข้ารหัส (server อ่านไม่ได้) แนะนำให้ส่งออกสำรองเป็นระยะ</p>
           <div id="data-count" class="muted small"></div>
+        </div>
+
+        <div class="card info" id="sync-card">
+          <h2>Sync ระหว่างเครื่อง</h2>
+          <div id="sync-off">
+            <p class="muted small">ใช้รหัส sync เดียวกันในทุกเครื่อง แล้วกด "Sync ตอนนี้" เมื่ออยากให้ข้อมูลตรงกัน — ข้อมูลถูกเข้ารหัสก่อนส่ง ไม่มีรหัสก็อ่านไม่ได้</p>
+            <button class="btn primary" id="sync-new" type="button">เปิด sync (สร้างรหัสใหม่)</button>
+            <form id="sync-join" class="sync-row" autocomplete="off">
+              <input id="sync-code-in" type="text" placeholder="หรือใส่รหัสจากอีกเครื่อง" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="รหัส sync">
+              <button class="btn" type="submit">เชื่อมต่อ</button>
+            </form>
+          </div>
+          <div id="sync-on" hidden>
+            <p class="small">รหัส sync: <code id="sync-code"></code></p>
+            <p class="muted small">ใส่รหัสนี้ในอีกเครื่องที่แท็บ "เพิ่มเติม" — เก็บเป็นความลับ ถ้าทำหายจะกู้ข้อมูลบน server ไม่ได้</p>
+            <div class="sync-row">
+              <button class="btn primary" id="sync-now" type="button">Sync ตอนนี้</button>
+              <button class="btn" id="sync-copy" type="button">คัดลอกลิงก์</button>
+            </div>
+            <button class="link-btn danger" id="sync-disconnect" type="button">ปิด sync ในเครื่องนี้</button>
+          </div>
+          <p id="sync-status" class="muted small" role="status"></p>
         </div>
 
         <div class="card menu">
@@ -161,6 +183,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
+  <script src="sync.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

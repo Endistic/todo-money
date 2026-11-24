@@ -99,10 +99,14 @@ const ui = { tab: 'todo', filter: 'all', month: today().slice(0, 7) };
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && Array.isArray(s.todos) && Array.isArray(s.tx)) return s;
+    if (s && Array.isArray(s.todos) && Array.isArray(s.tx)) return { deleted: {}, ...s };
   } catch (_) { /* ignore */ }
-  return { todos: [], tx: [] };
+  return { todos: [], tx: [], deleted: {} };
 }
+// สำหรับ sync: ทุกการแก้ไขประทับ updatedAt, ทุกการลบเก็บ tombstone (ดู mergeState ใน sync.js)
+const stamp = (x) => { x.updatedAt = Date.now(); return x; };
+function bury(items) { for (const x of items) state.deleted[x.id] = Date.now(); }
+function unbury(items) { for (const x of items) { delete state.deleted[x.id]; stamp(x); } }
 function save() {
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
@@ -182,7 +186,7 @@ $('#todo-form').addEventListener('submit', (e) => {
   if (!title) return;
   const due = $('#todo-due').value;
   const detail = $('#todo-detail').value.trim();
-  state.todos.push({ id: uid(), title, detail, due: DATE_RE.test(due) ? due : '', done: false, createdAt: Date.now(), doneAt: 0 });
+  state.todos.push(stamp({ id: uid(), title, detail, due: DATE_RE.test(due) ? due : '', done: false, createdAt: Date.now(), doneAt: 0 }));
   if (DATE_RE.test(due)) ui.month = due.slice(0, 7); // พาไปเดือนของงานที่เพิ่งเพิ่ม
   $('#todo-title').value = '';
   $('#todo-detail').value = '';
@@ -202,8 +206,10 @@ $('#todo-clear').addEventListener('click', () => {
   const removed = state.todos.filter((t) => t.done);
   if (!removed.length) return;
   state.todos = state.todos.filter((t) => !t.done);
+  bury(removed);
   commit();
   toast(`ล้างแล้ว ${removed.length} งาน`, 'เลิกทำ', () => {
+    unbury(removed);
     state.todos.push(...removed);
     commit();
   });
@@ -253,7 +259,7 @@ function renderTodos() {
       h('button', {
         class: 'check', type: 'button', role: 'checkbox', 'aria-checked': String(t.done),
         'aria-label': t.done ? 'ยกเลิกเสร็จ' : 'ทำเสร็จแล้ว',
-        onclick: () => { t.done = !t.done; t.doneAt = t.done ? Date.now() : 0; commit(); },
+        onclick: () => { t.done = !t.done; t.doneAt = t.done ? Date.now() : 0; stamp(t); commit(); },
       }),
       h('button', { class: 'todo-body', type: 'button', onclick: () => openTodoDialog(t) },
         h('span', { class: 'todo-title' }, t.title),
@@ -299,6 +305,7 @@ $('#todo-edit-form').addEventListener('submit', (e) => {
   const due = $('#te-due').value;
   editingTodo.due = DATE_RE.test(due) ? due : '';
   if (editingTodo.due) ui.month = editingTodo.due.slice(0, 7);
+  stamp(editingTodo);
   todoDlg.close();
   commit();
 });
@@ -307,9 +314,10 @@ $('#te-delete').addEventListener('click', () => {
   const t = editingTodo;
   if (!t) return;
   state.todos = state.todos.filter((x) => x.id !== t.id);
+  bury([t]);
   todoDlg.close();
   commit();
-  toast('ลบงานแล้ว', 'เลิกทำ', () => { state.todos.push(t); commit(); });
+  toast('ลบงานแล้ว', 'เลิกทำ', () => { unbury([t]); state.todos.push(t); commit(); });
 });
 
 /* =========================================================
@@ -440,9 +448,9 @@ $('#tx-form').addEventListener('submit', (e) => {
   const note = $('#tx-note').value.trim();
   if (txDraft.id) {
     const t = state.tx.find((x) => x.id === txDraft.id);
-    if (t) Object.assign(t, { type: txDraft.type, category: txDraft.category, amount, date, note });
+    if (t) stamp(Object.assign(t, { type: txDraft.type, category: txDraft.category, amount, date, note }));
   } else {
-    state.tx.push({ id: uid(), type: txDraft.type, category: txDraft.category, amount, date, note, createdAt: Date.now() });
+    state.tx.push(stamp({ id: uid(), type: txDraft.type, category: txDraft.category, amount, date, note, createdAt: Date.now() }));
   }
   // ถ้าบันทึกเป็นวันในเดือนอื่น ให้พาไปดูเดือนนั้น เพื่อให้เห็นรายการที่เพิ่งเพิ่ม
   ui.month = date.slice(0, 7);
@@ -454,9 +462,10 @@ $('#tx-delete').addEventListener('click', () => {
   const t = state.tx.find((x) => x.id === txDraft?.id);
   if (!t) return;
   state.tx = state.tx.filter((x) => x.id !== t.id);
+  bury([t]);
   txDlg.close();
   commit();
-  toast('ลบรายการแล้ว', 'เลิกทำ', () => { state.tx.push(t); commit(); });
+  toast('ลบรายการแล้ว', 'เลิกทำ', () => { unbury([t]); state.tx.push(t); commit(); });
 });
 
 // ปิด dialog เมื่อแตะพื้นหลัง
@@ -514,16 +523,17 @@ $('#file-import').addEventListener('change', async (e) => {
       .map((t) => ({
         id: str(t.id, 64) || uid(), title: str(t.title, 200), detail: str(t.detail, 5000).trim(), due: DATE_RE.test(t.due) ? t.due : '',
         done: !!t.done, createdAt: Number(t.createdAt) || Date.now(), doneAt: Number(t.doneAt) || 0,
+        updatedAt: Number(t.updatedAt) || 0,
       }));
     const tx = data.tx
       .filter((t) => t && (t.type === 'income' || t.type === 'expense') && Number.isFinite(Number(t.amount)) && Number(t.amount) > 0 && DATE_RE.test(t.date))
       .map((t) => ({
         id: str(t.id, 64) || uid(), type: t.type, category: str(t.category, 32) || 'other',
         amount: Math.round(Number(t.amount) * 100) / 100, date: t.date, note: str(t.note, 120),
-        createdAt: Number(t.createdAt) || Date.now(),
+        createdAt: Number(t.createdAt) || Date.now(), updatedAt: Number(t.updatedAt) || 0,
       }));
     if (!confirm(`นำเข้า ${todos.length} งาน และ ${tx.length} รายการเงิน?\nข้อมูลปัจจุบันในเครื่องจะถูกแทนที่`)) return;
-    state = { todos, tx };
+    state = { todos, tx, deleted: {} };
     commit();
     toast('นำเข้าข้อมูลแล้ว');
   } catch (_) {
@@ -532,12 +542,110 @@ $('#file-import').addEventListener('change', async (e) => {
 });
 
 $('#btn-wipe').addEventListener('click', () => {
-  if (!confirm('ลบข้อมูลทั้งหมด (งานและรายรับรายจ่าย)?\nไม่สามารถกู้คืนได้ — ควรส่งออกสำรองก่อน')) return;
+  if (!confirm('ลบข้อมูลทั้งหมดในเครื่องนี้ (งานและรายรับรายจ่าย) และปิด sync?\nไม่สามารถกู้คืนได้ — ควรส่งออกสำรองก่อน\n(ข้อมูลบน server และเครื่องอื่นไม่ถูกลบ)')) return;
   if (!confirm('ยืนยันอีกครั้ง: ลบทั้งหมดจริงๆ?')) return;
-  state = { todos: [], tx: [] };
+  state = { todos: [], tx: [], deleted: {} };
+  setSyncConf(null); // ไม่ให้ sync ครั้งถัดไปดึงข้อมูลที่เพิ่งลบกลับมาเงียบๆ
   commit();
   toast('ลบข้อมูลทั้งหมดแล้ว');
 });
+
+/* =========================================================
+   MORE: sync ระหว่างเครื่อง (กดเอง) — crypto/merge อยู่ใน sync.js
+   ========================================================= */
+const SYNC_KEY = 'todo-money:sync'; // { code, last } — แยกจาก state เพื่อไม่ให้รหัสหลุดไปในไฟล์สำรอง
+function syncConf() {
+  try { return JSON.parse(localStorage.getItem(SYNC_KEY)); } catch (_) { return null; }
+}
+function setSyncConf(c) {
+  if (c) localStorage.setItem(SYNC_KEY, JSON.stringify(c));
+  else localStorage.removeItem(SYNC_KEY);
+}
+
+async function syncFetch(id, init = {}) {
+  const res = await fetch('/api/sync', { ...init, cache: 'no-store', headers: { 'x-sync-id': id } });
+  if (!res.ok && res.status !== 404) throw new Error(`server ตอบ ${res.status}`);
+  return res;
+}
+
+// pull → merge → save → push ; mustExist = ตอนเชื่อมเครื่องใหม่ ต้องมีข้อมูลของรหัสนี้อยู่แล้ว (กันพิมพ์รหัสผิด)
+async function syncNow(code, mustExist) {
+  const { id, key } = await syncKeys(code);
+  const res = await syncFetch(id);
+  if (res.status === 404) {
+    if (mustExist) throw new Error('ไม่พบข้อมูลของรหัสนี้ — ตรวจรหัสอีกครั้ง');
+  } else {
+    let remote;
+    try { remote = await decryptState(key, await res.text()); }
+    catch (_) { throw new Error('ถอดรหัสข้อมูลบน server ไม่ได้'); }
+    state = mergeState(state, remote);
+    save();
+  }
+  // ponytail: KV ไม่มี compare-and-swap — ถ้าสองเครื่องกด sync พร้อมกันเป๊ะ การแก้ไขฝั่งหนึ่งจะมาในรอบถัดไป
+  await syncFetch(id, { method: 'PUT', body: await encryptState(key, state) });
+}
+
+let syncing = false;
+async function runSync(code, mustExist = false) {
+  if (syncing) return;
+  syncing = true;
+  renderSync('กำลัง sync…');
+  try {
+    await syncNow(code, mustExist);
+    setSyncConf({ code, last: Date.now() });
+    syncing = false;
+    render();
+    toast('Sync แล้ว');
+  } catch (e) {
+    syncing = false;
+    renderSync('Sync ไม่สำเร็จ: ' + (e instanceof TypeError ? 'เชื่อมต่อ server ไม่ได้ (ออฟไลน์อยู่?)' : e.message));
+  }
+}
+
+function renderSync(msg) {
+  const c = syncConf();
+  $('#sync-off').hidden = !!c;
+  $('#sync-on').hidden = !c;
+  $('#sync-code').textContent = c?.code || '';
+  $$('#sync-now, #sync-new, #sync-join button').forEach((b) => (b.disabled = syncing));
+  $('#sync-status').textContent = msg ?? (c?.last
+    ? 'Sync ล่าสุด: ' + new Date(c.last).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })
+    : '');
+}
+
+$('#sync-new').addEventListener('click', () => runSync(newSyncCode()));
+$('#sync-join').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const input = $('#sync-code-in');
+  const code = normalizeSyncCode(input.value);
+  if (!code) {
+    input.setCustomValidity('รหัสไม่ถูกต้อง — ต้องมี 20 ตัวอักษร เช่น abcde-12345-fghjk-67890');
+    input.reportValidity();
+    return;
+  }
+  runSync(code, true);
+});
+$('#sync-code-in').addEventListener('input', (e) => e.target.setCustomValidity(''));
+$('#sync-now').addEventListener('click', () => runSync(syncConf().code));
+$('#sync-copy').addEventListener('click', () => {
+  const link = `${location.origin}${location.pathname}#sync=${syncConf().code}`;
+  navigator.clipboard.writeText(link).then(() => toast('คัดลอกลิงก์แล้ว'), () => toast('คัดลอกไม่ได้ — จดรหัสด้านบนแทน'));
+});
+$('#sync-disconnect').addEventListener('click', () => {
+  if (!confirm('ปิด sync ในเครื่องนี้?\nข้อมูลในเครื่องยังอยู่ ถ้าจะเชื่อมใหม่ต้องใช้รหัสเดิม')) return;
+  setSyncConf(null);
+  renderSync();
+});
+
+// เปิดจากลิงก์ ...#sync=<code> → ใส่รหัสรอไว้ให้กดเชื่อมต่อเอง (ไม่เชื่อมอัตโนมัติ)
+function takeSyncLink() {
+  if (!location.hash.startsWith('#sync=')) return;
+  $('#sync-code-in').value = decodeURIComponent(location.hash.slice(6));
+  history.replaceState(null, '', location.pathname + location.search);
+  setTab('more');
+}
+takeSyncLink();
+window.addEventListener('hashchange', takeSyncLink);
 
 /* =========================================================
    render
@@ -555,7 +663,10 @@ function render() {
 
   if (ui.tab === 'todo') renderTodos();
   else if (ui.tab === 'money') renderMoney();
-  else $('#data-count').textContent = `ตอนนี้มี ${state.todos.length} งาน · ${state.tx.length} รายการเงิน`;
+  else {
+    $('#data-count').textContent = `ตอนนี้มี ${state.todos.length} งาน · ${state.tx.length} รายการเงิน`;
+    renderSync();
+  }
 }
 
 render();

@@ -1,0 +1,9 @@
+# Cloudflare Pages (direct upload) — deploy: ดู README
+name = "todo-money"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-11-01"
+
+# เก็บข้อมูล sync ที่เข้ารหัสแล้ว (functions/api/sync.js)
+[[kv_namespaces]]
+binding = "SYNC"
+id = "f27b5383000f4c61b97bf7b0890f7569"

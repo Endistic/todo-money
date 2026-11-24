@@ -2,8 +2,9 @@
 
 แอปเดียวจบ: จดงานที่ต้องทำ + บันทึกรายรับรายจ่าย ใช้ได้ทั้ง iOS และ macOS แบบติดตั้งเป็นแอป ใช้ออฟไลน์ได้
 
-- ไม่มี backend, ไม่มี build step — ไฟล์ static ล้วน (HTML/CSS/JS)
-- ข้อมูลเก็บใน `localStorage` ในเครื่องนั้นๆ (ไม่ sync ข้ามเครื่อง) — มีปุ่มส่งออก/นำเข้า JSON และส่งออก CSV ในแท็บ "เพิ่มเติม"
+- ไม่มี build step — ไฟล์ static ล้วน (HTML/CSS/JS) + backend เล็กๆ เฉพาะ sync (`functions/api/sync.js` + Cloudflare KV)
+- ข้อมูลเก็บใน `localStorage` ในเครื่องนั้นๆ — มีปุ่มส่งออก/นำเข้า JSON และส่งออก CSV ในแท็บ "เพิ่มเติม"
+- Sync ข้ามเครื่องแบบกดเอง: แท็บ "เพิ่มเติม" → เปิด sync ได้รหัส → ใส่รหัสเดียวกันในอีกเครื่อง → กด "Sync ตอนนี้" ข้อมูลถูกเข้ารหัส (AES-GCM) ในเครื่องก่อนส่ง server อ่านไม่ได้
 - Dark mode ตามระบบ, รองรับ safe-area ของ iPhone
 
 ## ทดลองรันในเครื่อง
@@ -13,7 +14,9 @@ python3 -m http.server 8080
 # เปิด http://localhost:8080
 ```
 
-(service worker ทำงานเฉพาะบน `https://` หรือ `localhost`)
+(service worker ทำงานเฉพาะบน `https://` หรือ `localhost`) — แบบนี้ sync ใช้ไม่ได้ ถ้าจะลอง sync ให้ build `dist/` (ดูด้านล่าง) แล้วรัน `npx wrangler pages dev` (KV จำลองในเครื่อง)
+
+ทดสอบ logic ของ sync (merge/เข้ารหัส): `node --test`
 
 ## Deploy — Cloudflare Pages
 
@@ -28,11 +31,13 @@ npx wrangler pages project create todo-money --production-branch main --force
 
 (`--force` = สร้างเป็น Pages แบบเดิม ไม่ให้ wrangler โยนไปเป็น Workers — ใช้แค่ตอนสร้างครั้งเดียว)
 
-ทุกครั้งที่ deploy (อัปโหลดเฉพาะไฟล์แอป ไม่รวม `.git`/README):
+KV สำหรับ sync (ครั้งเดียว ทำไว้แล้ว): `npx wrangler kv namespace create todo-money-sync` แล้วใส่ `id` ที่ได้ใน `wrangler.toml`
+
+ทุกครั้งที่ deploy — copy เฉพาะไฟล์แอปไปที่ `dist/` (ไม่รวม `.git`/README) แล้ว deploy ตาม `wrangler.toml` (รวม `functions/` และ KV binding):
 
 ```bash
-d=$(mktemp -d) && cp -r index.html styles.css app.js sw.js manifest.webmanifest icons "$d" \
-  && npx wrangler pages deploy "$d" --project-name todo-money --branch main
+rm -rf dist && mkdir dist && cp -r index.html styles.css app.js sync.js sw.js manifest.webmanifest icons dist/ \
+  && npx wrangler pages deploy --branch main
 ```
 
 ## ติดตั้งเป็นแอป

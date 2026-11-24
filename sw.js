@@ -1,12 +1,13 @@
 'use strict';
 
 // เปลี่ยนเลขเวอร์ชันนี้ทุกครั้งที่ deploy ของใหม่ เพื่อให้เครื่องผู้ใช้อัปเดตแคช
-const CACHE = 'todo-money-v3';
+const CACHE = 'todo-money-v4';
 const ASSETS = [
   './',
   'index.html',
   'styles.css',
   'app.js',
+  'sync.js',
   'manifest.webmanifest',
   'icons/icon-192.png',
   'icons/icon-512.png',
@@ -28,7 +29,8 @@ self.addEventListener('activate', (event) => {
 // stale-while-revalidate: เปิดเร็วจากแคชเสมอ แล้วแอบดึงของใหม่มาเก็บไว้ใช้ครั้งหน้า
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
 
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {

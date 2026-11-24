@@ -90,6 +90,11 @@ input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px
   font-size: 28px; line-height: 1;
 }
 .link-btn { display: block; margin: 14px auto 0; background: none; border: 0; color: var(--accent); padding: 10px; }
+.link-btn.danger { color: var(--neg); }
+.sync-row { display: flex; gap: 8px; margin: 10px 0 0; }
+.sync-row input { flex: 1; min-width: 0; }
+#sync-code { font: 600 15px ui-monospace, SFMono-Regular, Menlo, monospace; -webkit-user-select: all; user-select: all; overflow-wrap: anywhere; }
+#sync-status:empty { display: none; }
 
 .seg { display: flex; background: var(--fill); border-radius: 10px; padding: 2px; margin-bottom: 12px; }
 .seg button { flex: 1; min-height: 36px; border: 0; background: transparent; border-radius: 8px; font-size: 14px; font-weight: 500; }
