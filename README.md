@@ -15,32 +15,25 @@ python3 -m http.server 8080
 
 (service worker ทำงานเฉพาะบน `https://` หรือ `localhost`)
 
-## Deploy ฟรี
+## Deploy — Cloudflare Pages
 
-เลือกอย่างใดอย่างหนึ่ง ทั้งหมดได้ HTTPS ให้อัตโนมัติ ซึ่ง PWA ต้องใช้
+เว็บอยู่ที่ <https://todo-money.pages.dev> (HTTPS อัตโนมัติ ซึ่ง PWA ต้องใช้)
 
-### ตัวเลือก A — GitHub Pages (มี workflow ให้แล้ว)
+ครั้งแรกครั้งเดียว:
 
 ```bash
-git init -b main
-git add .
-git commit -m "init"
-gh repo create todo-money --public --source=. --push
+npx wrangler login
+npx wrangler pages project create todo-money --production-branch main --force
 ```
 
-จากนั้นที่ repo → **Settings → Pages → Source: GitHub Actions** แล้ว push อีกครั้ง (หรือกด Run workflow ในแท็บ Actions)
-เว็บจะอยู่ที่ `https://<username>.github.io/todo-money/`
+(`--force` = สร้างเป็น Pages แบบเดิม ไม่ให้ wrangler โยนไปเป็น Workers — ใช้แค่ตอนสร้างครั้งเดียว)
 
-> ตามที่ทราบ GitHub Pages บนแพลนฟรีใช้กับ repo แบบ public — โค้ดนี้ไม่มีข้อมูลลับ (ข้อมูลของคุณอยู่ในเครื่องคุณเท่านั้น) จึงไม่เป็นปัญหา
+ทุกครั้งที่ deploy (อัปโหลดเฉพาะไฟล์แอป ไม่รวม `.git`/README):
 
-### ตัวเลือก B — Cloudflare Pages (รองรับ repo private)
-
-Dashboard → Workers & Pages → Create → Pages → เชื่อม Git repo
-Build command: *(ว่าง)* · Output directory: `/`
-
-### ตัวเลือก C — Netlify Drop (เร็วสุด ไม่ต้องใช้ git)
-
-เปิด <https://app.netlify.com/drop> แล้วลากทั้งโฟลเดอร์นี้ไปวาง
+```bash
+d=$(mktemp -d) && cp -r index.html styles.css app.js sw.js manifest.webmanifest icons "$d" \
+  && npx wrangler pages deploy "$d" --project-name todo-money --branch main
+```
 
 ## ติดตั้งเป็นแอป
 
